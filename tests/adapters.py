@@ -562,7 +562,7 @@ def get_tokenizer(
         A BPE tokenizer that uses the provided vocab, merges, and special tokens.
     """
 
-    return tokenizer.BPETokenizer(vocab, merges, special_tokens)
+    return BPETokenizer(vocab, merges, special_tokens)
 
 def run_train_bpe(
     input_path: str | os.PathLike,
@@ -592,4 +592,4 @@ def run_train_bpe(
                 Merges are ordered by order of creation.
     """
 
-    return tokenizer.BPETrainer.train(input_path, vocab_size, special_tokens)
+    return BPETrainer.train(input_path, vocab_size, special_tokens)
