@@ -29,11 +29,19 @@ class Tokenizer:
         self.vocab_index = {v: k for k, v in vocab.items()}
         self.merges = merges
         self.merges_index = {pair: index for index, pair in enumerate(merges)}
-        self.special_tokens = special_tokens
         if special_tokens:
             self.special_tokens = sorted(special_tokens, key=len, reverse=True)
-            self.special_token_pattern = re.compile("(" + "|".join(re.escape(tok) for tok in special_tokens) + ")")
+            self.special_token_pattern = re.compile("(" + "|".join(re.escape(tok) for tok in self.special_tokens) + ")")
+
+            next_id = max(self.vocab.keys()) + 1
+            for token in special_tokens:
+                token_bytes = token.encode("UTF-8")
+                if token_bytes not in self.vocab_index:
+                    self.vocab[next_id] = token_bytes
+                    self.vocab_index[token_bytes] = next_id
+                    next_id += 1
         else:
+            self.special_tokens = []
             self.special_token_pattern = None
 
 
@@ -70,7 +78,12 @@ class Tokenizer:
 
     def decode(self, ids: list[int]) -> str:
         """Decode a sequence of token IDs into text."""
-        return ""
+        out_buffer = b''
+        for id in ids:
+            subtoken = self.vocab[id]
+            out_buffer += subtoken
+
+        return out_buffer.decode('UTF-8', errors="replace")
 
     def _encode_token(self, token: tuple[bytes]) -> list[int]:
         token_list = list(token)
