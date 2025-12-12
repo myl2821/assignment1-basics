@@ -84,19 +84,76 @@ class BPETrainer:
                     Merges are ordered by order of creation.
         """
 
-        merges: dict[tuple[int, int], int] = defaultdict(int)
+        merges = []
 
         # Initialize vocab special tokens and single-byte tokens
         # follow the GPT-2 patterns that special tokens puts in the head of queue
         initial_tokens = [tok.encode("UTF-8") for tok in special_tokens] + [bytes([i]) for i in range(256)]
-        vocab = {i: token for i, token in enumerate(initial_tokens)}
+        vocab: list[bytes] = initial_tokens
 
-        merges_to_run = vocab_size - len(vocab)
+        pre_tokenize_freqs: dict[bytes, int] = pre_tokenize(input_path, special_tokens)
+        # tuple[dict[tuple[bytes, bytes], int], dict[tuple[bytes, bytes], bytes]
+        pair_freqs, pairs_to_keys = get_pair_freqs(pre_tokenize_freqs)
 
-        pre_tokenize(input_path, special_tokens)
+        for _ in range(len(vocab), vocab_size):
+            # get token pair with max freq, and use the key itself as the tie-breaker
+            subtoken_pair = max(pair_freqs, key=lambda k: (pair_freqs[k], k))
+            subtoken1, subtoken2 = subtoken_pair
+            merges.append(subtoken_pair)
+            vocab.append(subtoken1+subtoken2)
+            merge(pre_tokenize_freqs, pair_freqs, subtoken_pair, pairs_to_keys)
 
+        vocab_dict = {i: v for i, v in enumerate(vocab)}
+        return (vocab_dict, merges)
 
-        return (vocab, merges)
+def build_new_repr(old_repr: tuple[bytes], pair: tuple[bytes, bytes]) -> tuple[tuple[bytes], dict[tuple[bytes], int]]:
+    """
+    Replaces every occurrence of pair=(x,y) in old_repr with the merged symbol x+y.
+    The new freq is also calculated and returned.
+    """
+    new_symbols = []
+    new_freq = defaultdict(int)
+    i = 0
+    while i < len(old_repr):
+        if i < len(old_repr) - 1 and old_repr[i] == pair[0] and old_repr[i + 1] == pair[1]:
+            new_symbol = old_repr[i] + old_repr[i + 1]
+            new_symbols.append(new_symbol)  # merges, e.g. b'A' + b'B' => b'AB'
+            new_freq[new_symbol] 
+            i += 2
+        else:
+            new_symbols.append(old_repr[i])
+            i += 1
+    return tuple(new_symbols)
+
+def merge(
+        freqs: dict[tuple[bytes], int],
+        pair_freqs: dict[tuple[bytes, bytes], int],
+        subtoken_pair: tuple[bytes, bytes],
+        pairs_to_keys: dict[tuple[bytes, bytes], set[tuple[bytes]]]):
+
+    # get the key set that a subtoken pair shoule be merged
+    keys = pairs_to_keys[subtoken_pair]
+
+    for old_key in keys.copy():
+        new_key = build_new_repr(old_key, subtoken_pair)
+        old_freq = freqs.pop(old_key)
+        freqs[new_key] += old_freq
+
+        # Decrement frequencies in pair_freqs for old_key's adjacencies
+        for i in range(len(old_key) - 1):
+            left, right = old_key[i], old_key[i + 1]
+            pair_freqs[(left, right)] -= old_freq
+            if pair_freqs[(left, right)] <= 0:
+                del pair_freqs[left, right]
+            pairs_to_keys[(left, right)].discard(old_key)
+
+        # Increment frequencies for new_key's adjacencies
+        for i in range(len(new_key) - 1):
+            left, right = new_key[i], new_key[i + 1]
+            pair_freqs[(left, right)] += old_freq
+            pairs_to_keys[(left, right)].add(new_key)
+    
+    pairs_to_keys[subtoken_pair] = set()
 
 
 def pre_tokenize(
@@ -134,7 +191,26 @@ def pre_tokenize(
         for k, v in freq_dict.items():
             agg_dict[k] += v
 
-    print(agg_dict)
+    return agg_dict
+
+
+def get_pair_freqs(
+    freqs: dict[tuple[bytes], int],
+) -> tuple[dict[tuple[bytes, bytes], int], dict[tuple[bytes, bytes], set[tuple[bytes]]]]:
+    """
+    Builds a pair-frequency table and reverse mapping (pair -> set of keys).
+    The reverse mapping will be used in the merging phase.
+    """
+    pair_freqs: dict[tuple[bytes, bytes], int] = defaultdict(int)
+    pairs_to_keys: dict[tuple[bytes, bytes], set[tuple[bytes]]] = defaultdict(set)
+
+    for token, freq in freqs.items():
+        for i in range(len(token) - 1):
+            pair = (token[i], token[i + 1])
+            pair_freqs[pair] += freq
+            pairs_to_keys[pair].add(token)
+
+    return pair_freqs, pairs_to_keys
     
 
 # take from cs336_basics/pretokenization_example.py
