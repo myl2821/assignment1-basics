@@ -13,8 +13,7 @@ from cs336_basics.bpe.tokenizer import Tokenizer
 from cs336_basics.bpe.trainer import Trainer
 from cs336_basics.model.linear import Linear
 from cs336_basics.model.embedding import Embedding
-
-
+from cs336_basics.model.norm import RMSNorm
 
 def run_linear(
     d_in: int,
@@ -308,7 +307,7 @@ def run_transformer_lm(
         num_heads (int): Number of heads to use in multi-headed attention. `d_model` must be
             evenly divisible by `num_heads`.
         d_ff (int): Dimensionality of the feed-forward inner layer (section 3.3).
-        rope_theta (float): The RoPE $\Theta$ parameter.
+        rope_theta (float): The RoPE $\\Theta$ parameter.
         weights (dict[str, Tensor]):
             State dict of our reference implementation. {num_layers} refers to an
             integer between `0` and `num_layers - 1` (the layer index).
@@ -386,7 +385,9 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    raise NotImplementedError
+
+    layer = RMSNorm(d_model, eps, weights)
+    return layer.forward(in_features)
 
 
 def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
