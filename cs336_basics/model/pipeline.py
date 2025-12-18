@@ -2,6 +2,7 @@ import torch
 import math
 from .softmax import Softmax
 from .linear import Linear
+from .rope import RotaryPositionalEmbedding
 from einops import einsum, rearrange
 from jaxtyping import Bool, Float, Int
 
@@ -51,7 +52,11 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         self.d_model = d_model
         self.d_head = d_model // num_heads
 
-    def forward(self, x: Float[torch.Tensor, " ... sequence_length d_in"]):
+    def forward(
+            self,
+            x: Float[torch.Tensor, " ... sequence_length d_in"],
+            rope: RotaryPositionalEmbedding | None = None,
+            token_positions: torch.Tensor | None = None):
         """
         Args:
             x (Float[Tensor, "... sequence_length d_in"]): Tensor to run your implementation on.
@@ -70,6 +75,13 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         V = rearrange(V, "... s (h d) -> ... h s d", h=self.num_heads)
 
         queries = x.shape[-2]
+
+        if rope is not None:
+            if token_positions is None:
+                token_positions = torch.arange(queries, dtype=torch.float, device=Q.device).long()
+            Q = rope.forward(Q, token_positions)
+            K = rope.forward(K, token_positions)
+
         # Create causal mask for self-attention
         mask = ~torch.triu(torch.ones((queries, queries), device=x.device, dtype=torch.bool), diagonal=1)
 
