@@ -1,8 +1,5 @@
 import torch
 import torch.nn as nn
-import math
-from einops import einsum, reduce
-
 class RMSNorm(nn.Module):
     def __init__(self, d_model: int, eps: float = 1e-5, weights=None, device=None, dtype=None):
         """
@@ -22,10 +19,11 @@ class RMSNorm(nn.Module):
         super().__init__()
         self.eps = eps
         self.d_model = d_model
-        self.weights = weights
 
-        if self.weights is None:
-            self.weights = torch.nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
+        if weights is None:
+            self.weights = nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
+        else:
+            self.weights = nn.Parameter(weights)
 
     def forward(self, in_features: torch.Tensor) -> torch.Tensor:
         """

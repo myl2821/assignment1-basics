@@ -20,14 +20,15 @@ class Linear(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
 
-        self.weight = weights
         std = math.sqrt(2 / (out_features + in_features))
 
-        if self.weight is None:
+        if weights is None:
             self.weight = nn.Parameter(
                 torch.empty(out_features, in_features, device=device, dtype=dtype)
             )
             self._reset_parameters(std)
+        else:
+            self.weight = nn.Parameter(weights)
 
     def _reset_parameters(self, std):
         nn.init.trunc_normal_(self.weight, mean=0, std=std, a=-3*std, b=3*std)
