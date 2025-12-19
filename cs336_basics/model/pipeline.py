@@ -150,3 +150,71 @@ class TransformerBlock(torch.nn.Module):
         x = x + self.attn(self.ln1(x), self.rope)
         x = x + self.ffn(self.ln2(x))
         return x
+
+
+class Transformer(torch.nn.Module):
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        d_ff: int,
+        vocab_size: int,
+        context_length: int,
+        num_layers: int,
+        weights: dict[str, torch.Tensor],
+        rope_theta: float = 10000.0,
+        device=None,
+        dtype=None,
+    ):
+        super().__init__()
+
+        self.context_length = context_length
+        self.token_embeddings = Embedding(vocab_size, d_model, weights['token_embeddings.weight'], device, dtype)
+
+        assert d_model % num_heads == 0
+
+        d_head = d_model / num_heads
+        rope = RotaryPositionalEmbedding(rope_theta, d_head, context_length, device=device, dtype=dtype)
+
+        blocks = []
+        for i in range(num_layers):
+            block = TransformerBlock(
+                d_model,
+                num_heads,
+                d_ff,
+                weights[f"layers.{i}.ffn.w1.weight"],
+                weights[f"layers.{i}.ffn.w2.weight"],
+                weights[f"layers.{i}.ffn.w3.weight"],
+                rope
+            )
+            block.attn.W_q.weight.data = weights[f"layers.{i}.attn.q_proj.weight"]
+            block.attn.W_v.weight.data = weights[f"layers.{i}.attn.v_proj.weight"]
+            block.attn.W_k.weight.data = weights[f"layers.{i}.attn.k_proj.weight"]
+            block.attn.W_o.weight.data = weights[f"layers.{i}.attn.output_proj.weight"]
+            block.ln1.weights.data = weights[f"layers.{i}.ln1.weight"]
+            block.ln2.weights.data = weights[f"layers.{i}.ln2.weight"]
+
+            blocks.append(block)
+
+        self.layers = torch.nn.ModuleList(blocks)
+
+        self.ln_final = RMSNorm(d_model, device=device, dtype=dtype)
+        self.ln_final.weights.data = weights['ln_final.weight']
+        self.lm_head = Linear(d_model, vocab_size, device, dtype)
+        self.lm_head.weight.data = weights['lm_head.weight']
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        _, seq_len = x.shape
+
+        if seq_len > self.context_length:
+            raise ValueError(f"Input sequence length ({seq_len}) exceeds model context length ({self.context_length})")
+
+        x = self.token_embeddings(x)
+
+        for layer in self.layers:
+            x = layer(x)
+
+        x = self.ln_final(x)
+        x = self.lm_head(x)
+
+        return x

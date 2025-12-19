@@ -17,7 +17,7 @@ from cs336_basics.model.norm import RMSNorm
 from cs336_basics.model.swiglu import SwigLU
 from cs336_basics.model.rope import RotaryPositionalEmbedding
 from cs336_basics.model.softmax import Softmax
-from cs336_basics.model.pipeline import scaled_dot_product_attention, CausalMultiHeadSelfAttention, TransformerBlock
+from cs336_basics.model.pipeline import scaled_dot_product_attention, CausalMultiHeadSelfAttention, TransformerBlock, Transformer
 
 def run_linear(
     d_in: int,
@@ -403,7 +403,17 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    transformer = Transformer(
+        d_model,
+        num_heads,
+        d_ff,
+        vocab_size,
+        context_length,
+        num_layers,
+        weights,
+        rope_theta
+    )
+    return transformer(in_indices)
 
 
 def run_rmsnorm(
