@@ -3,6 +3,9 @@ import math
 from .softmax import Softmax
 from .linear import Linear
 from .rope import RotaryPositionalEmbedding
+from .embedding import Embedding
+from .norm import RMSNorm
+from .swiglu import SwigLU
 from einops import einsum, rearrange
 from jaxtyping import Bool, Float, Int
 
@@ -89,3 +92,61 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         MH = rearrange(MH, "... h s d -> ... s (h d)")
 
         return self.W_o(MH)
+
+class TransformerBlock(torch.nn.Module):
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        d_ff: int,
+        w1_weight: torch.Tensor,
+        w2_weight: torch.Tensor,
+        w3_weight: torch.Tensor,
+        rope: RotaryPositionalEmbedding | None = None,
+        device=None,
+        dtype=None,
+        **kwargs,
+    ):
+        """
+        Args:
+            d_model (int): The dimensionality of the Transformer block input.
+            num_heads (int): Number of heads to use in multi-headed attention. `d_model` must be
+                evenly divisible by `num_heads`.
+            d_ff (int): Dimensionality of the feed-forward inner layer.
+            max_seq_len (int): Maximum sequence length to pre-cache if your implementation does that.
+            theta (float): RoPE parameter.
+            w1_weight: Weight of the first linear transformation in the FFN.
+            w2_weight: Weight of the first linear transformation in the FFN.
+            w3_weight: Weight of the first linear transformation in the FFN.
+        """
+        super().__init__()
+
+        self.rope = rope
+
+        self.ln1 = RMSNorm(d_model, device=device, dtype=dtype)
+        self.attn = CausalMultiHeadSelfAttention(d_model, num_heads, device, dtype, **kwargs)
+
+        self.ln2 = RMSNorm(d_model, device=device, dtype=dtype)
+        self.ffn = SwigLU(d_model, d_ff, w1_weight, w2_weight, w3_weight, device, dtype)
+
+    def forward(self, x: torch.Tensor):
+        """
+        Given the weights of a pre-norm Transformer block and input features,
+        return the output of running the Transformer block on the input features.
+
+        This function should use RoPE.
+        Depending on your implementation, you may simply need to pass the relevant args
+        to your TransformerBlock constructor, or you may need to initialize your own RoPE
+        class and pass that instead.
+
+           in_features (Float[Tensor, "batch sequence_length d_model"]):
+                Tensor to run your implementation on.
+
+        Returns:
+            Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
+            running the Transformer block on the input features while using RoPE.
+        """
+
+        x = x + self.attn(self.ln1(x), self.rope)
+        x = x + self.ffn(self.ln2(x))
+        return x

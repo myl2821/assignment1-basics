@@ -17,7 +17,7 @@ from cs336_basics.model.norm import RMSNorm
 from cs336_basics.model.swiglu import SwigLU
 from cs336_basics.model.rope import RotaryPositionalEmbedding
 from cs336_basics.model.softmax import Softmax
-from cs336_basics.model.pipeline import scaled_dot_product_attention, CausalMultiHeadSelfAttention
+from cs336_basics.model.pipeline import scaled_dot_product_attention, CausalMultiHeadSelfAttention, TransformerBlock
 
 def run_linear(
     d_in: int,
@@ -303,7 +303,25 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    d_head = d_model / num_heads
+    rope = RotaryPositionalEmbedding(theta, d_head, max_seq_len)
+
+    block = TransformerBlock(
+        d_model,
+        num_heads,
+        d_ff,
+        weights['ffn.w1.weight'],
+        weights['ffn.w2.weight'],
+        weights['ffn.w3.weight'],
+        rope)
+    block.attn.W_q.weight.data = weights['attn.q_proj.weight']
+    block.attn.W_v.weight.data = weights['attn.v_proj.weight']
+    block.attn.W_k.weight.data = weights['attn.k_proj.weight']
+    block.attn.W_o.weight.data = weights['attn.output_proj.weight']
+    block.ln1.weights.data = weights['ln1.weight']
+    block.ln2.weights.data = weights['ln2.weight']
+
+    return block(in_features)
 
 
 def run_transformer_lm(
