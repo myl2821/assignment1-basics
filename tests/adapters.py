@@ -19,7 +19,7 @@ from cs336_basics.model.rope import RotaryPositionalEmbedding
 from cs336_basics.model.softmax import Softmax
 from cs336_basics.model.pipeline import scaled_dot_product_attention, CausalMultiHeadSelfAttention, TransformerBlock, Transformer
 
-from cs336_basics import loss, optimizer
+from cs336_basics import loss, optimizer, data_loader
 
 def run_linear(
     d_in: int,
@@ -477,7 +477,7 @@ def run_get_batch(
         is the sampled input sequences, and the second tuple item is the corresponding
         language modeling labels.
     """
-    raise NotImplementedError
+    return data_loader.get_batch(dataset, batch_size, context_length, device)
 
 
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
