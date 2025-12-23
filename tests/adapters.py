@@ -19,7 +19,7 @@ from cs336_basics.model.rope import RotaryPositionalEmbedding
 from cs336_basics.model.softmax import Softmax
 from cs336_basics.model.pipeline import scaled_dot_product_attention, CausalMultiHeadSelfAttention, TransformerBlock, Transformer
 
-from cs336_basics import loss, optimizer, data_loader
+from cs336_basics import loss, optimizer, data_loader, checkpointing
 
 def run_linear(
     d_in: int,
@@ -584,7 +584,8 @@ def run_save_checkpoint(
             we've completed.
         out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
     """
-    raise NotImplementedError
+    return checkpointing.save_checkpoint(model, optimizer, iteration, out)
+
 
 
 def run_load_checkpoint(
@@ -605,7 +606,7 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
-    raise NotImplementedError
+    return checkpointing.load_checkpoint(src, model, optimizer)
 
 
 def get_tokenizer(
