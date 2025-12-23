@@ -14,6 +14,7 @@ from cs336_basics.bpe.trainer import Trainer
 from cs336_basics.model.linear import Linear
 from cs336_basics.model.embedding import Embedding
 from cs336_basics.model.norm import RMSNorm
+from cs336_basics.model.silu import SiLU
 from cs336_basics.model.swiglu import SwigLU
 from cs336_basics.model.rope import RotaryPositionalEmbedding
 from cs336_basics.model.softmax import Softmax
@@ -454,7 +455,8 @@ def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
         Float[Tensor,"..."]: of with the same shape as `in_features` with the output of applying
         SiLU to each element.
     """
-    raise NotImplementedError
+    layer = SiLU()
+    return layer.forward(in_features)
 
 
 def run_get_batch(
