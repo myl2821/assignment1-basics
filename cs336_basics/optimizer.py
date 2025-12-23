@@ -124,3 +124,35 @@ def get_lr_cosine_schedule(
         return min_learning_rate + (max_learning_rate - min_learning_rate) * cosine_decay
 
     return lr_fn
+
+def gradiant_clipping(
+    parameters: Iterable[torch.nn.Parameter],
+    max_norm: float,
+    norm_type: float = 2.0,
+) -> torch.Tensor:
+    """
+    Clips the gradients of the given parameters to have a maximum norm of `max_norm`.
+
+    Args:
+        parameters (Iterable[torch.nn.Parameter]): The parameters whose gradients will be clipped.
+        max_norm (float): The maximum allowed norm of the gradients.
+        norm_type (float): The type of the used p-norm. Can be 'inf' for infinity norm.
+
+    Returns:
+        Total norm of the parameters (viewed as a single vector).
+    """
+    total_norm = 0.0
+    for p in parameters:
+        if p.grad is not None:
+            param_norm = p.grad.data.norm(norm_type)
+            total_norm += param_norm.item() ** norm_type
+
+    total_norm = total_norm ** (1. / norm_type)
+
+    clip_coef = max_norm / (total_norm + 1e-6)
+    if clip_coef < 1:
+        for p in parameters:
+            if p.grad is not None:
+                p.grad.data.mul_(clip_coef)
+
+    return total_norm
