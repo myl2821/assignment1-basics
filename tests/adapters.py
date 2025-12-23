@@ -559,13 +559,13 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    return optimizer.get_lr_cosine_schedule(
-        it,
+    scheduler = optimizer.get_lr_cosine_schedule(
         max_learning_rate,
         min_learning_rate,
         warmup_iters,
         cosine_cycle_iters,
     )
+    return scheduler(it)
 
 
 def run_save_checkpoint(
