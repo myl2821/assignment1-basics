@@ -19,6 +19,8 @@ from cs336_basics.model.rope import RotaryPositionalEmbedding
 from cs336_basics.model.softmax import Softmax
 from cs336_basics.model.pipeline import scaled_dot_product_attention, CausalMultiHeadSelfAttention, TransformerBlock, Transformer
 
+from cs336_basics import loss
+
 def run_linear(
     d_in: int,
     d_out: int,
@@ -510,7 +512,7 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    raise NotImplementedError
+    return loss.cross_entropy(inputs, targets)
 
 
 def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
