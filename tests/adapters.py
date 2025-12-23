@@ -19,7 +19,7 @@ from cs336_basics.model.rope import RotaryPositionalEmbedding
 from cs336_basics.model.softmax import Softmax
 from cs336_basics.model.pipeline import scaled_dot_product_attention, CausalMultiHeadSelfAttention, TransformerBlock, Transformer
 
-from cs336_basics import loss
+from cs336_basics import loss, optimizer
 
 def run_linear(
     d_in: int,
@@ -531,7 +531,7 @@ def get_adamw_cls() -> Any:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    return optimizer.AdamW
 
 
 def run_get_lr_cosine_schedule(
