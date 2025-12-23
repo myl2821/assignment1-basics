@@ -94,4 +94,31 @@ class AdamW(torch.optim.Optimizer):
         return loss
 
                 
+def get_lr_cosine_schedule(
+    it: int,
+    max_learning_rate: float,
+    min_learning_rate: float,
+    warmup_iters: int,
+    cosine_cycle_iters: int,
+) -> Callable[[int], float]:
+    """
+    Returns a learning rate schedule function that implements a cosine learning rate schedule with warmup.
 
+    Args:
+        it (int): Iteration number to get learning rate for.
+        max_learning_rate (float): The maximum learning rate.
+        min_learning_rate (float): The minimum learning rate.
+        warmup_iters (int): The number of iterations to linearly increase the learning rate.
+        cosine_cycle_iters (int): The number of iterations for one cosine cycle.
+
+    Returns:
+        A function that takes the current iteration (int) and returns the learning rate (float).
+    """
+    if it < warmup_iters:
+        return max_learning_rate * (it / warmup_iters)
+    if it > cosine_cycle_iters:
+        return min_learning_rate
+
+    progress = (it - warmup_iters) / (cosine_cycle_iters - warmup_iters)
+    cosine_decay = 0.5 * (1 + math.cos(math.pi * progress))
+    return min_learning_rate + (max_learning_rate - min_learning_rate) * cosine_decay
